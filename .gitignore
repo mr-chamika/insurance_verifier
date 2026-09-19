@@ -1,0 +1,9 @@
+node_modules
+.output
+.tanstack
+dist
+.vercel
+.env*
+!.env.example
+coverage
+*.log
