@@ -26,7 +26,7 @@ The project uses the official TanStack Start Nitro adapter with the Vercel prese
 3. Leave the detected **TanStack Start** framework settings unchanged.
 4. Select **Deploy**.
 
-The included `vercel.json` allows OCR requests to run for up to 300 seconds. No environment variables are currently required.
+The included `vercel.json` enables TanStack Start framework detection. No environment variables are currently required.
 
 ## Insurance rules
 
