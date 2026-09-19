@@ -8,8 +8,8 @@ import { nitro } from 'nitro/vite'
 export default defineConfig({
   plugins: [tsconfigPaths(), tailwindcss(), tanstackStart(), nitro({
     preset: 'vercel',
-    traceDeps: ['@napi-rs/canvas*'],
-    rollupConfig: { external: [/^@napi-rs\/canvas(?:\/|$)/] },
+    traceDeps: ['@napi-rs/canvas*', 'tesseract.js*'],
+    rollupConfig: { external: [/^@napi-rs\/canvas(?:\/|$)/, /^tesseract\.js(?:\/|$)/] },
   }), react()],
   optimizeDeps: {
     exclude: [
