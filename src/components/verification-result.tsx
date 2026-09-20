@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, RotateCcw, X, XCircle } from 'lucide-react'
+import { CheckCircle2, Database, RotateCcw, X, XCircle } from 'lucide-react'
 import type { VerificationResult } from '~/types/verification'
 
 const EXCLUSION_HIGHLIGHT = /\b(hire|reward|passengers?|towing|recovery)\b/gi
@@ -19,6 +19,7 @@ export function VerificationResultView({ result, onReset, previews = [] }: {
   previews?: Array<{name:string;url:string}>
 }) {
   const [showDocument, setShowDocument] = useState(false)
+  const [showData, setShowData] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState(0)
   const preview=previews[selectedDocument]
   const ok = result.status === 'APPROVED'
@@ -35,6 +36,7 @@ export function VerificationResultView({ result, onReset, previews = [] }: {
     <p className="mt-3 text-center text-base font-medium leading-6 text-slate-700">{result.summary}</p>
     {!showDocument && <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
       {preview && <button type="button" onClick={() => setShowDocument(true)} className="inline-flex items-center justify-center rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50">View uploaded documents</button>}
+      {result.documents?.length ? <button type="button" onClick={() => setShowData(true)} className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"><Database size={15}/>View extracted data</button> : null}
       <button type="button" onClick={onReset} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-200 transition hover:bg-emerald-700 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
         <RotateCcw size={15} />Check another document
       </button>
@@ -47,7 +49,7 @@ export function VerificationResultView({ result, onReset, previews = [] }: {
           <div>
             <p className="font-bold">{rule.label}</p>
             <p>{rule.reason}</p>
-            {rule.ruleId === 'exclusions' && rule.evidence && <blockquote className="mt-1 border-l-2 border-red-300 pl-2 italic text-red-700">
+            {(rule.ruleId === 'exclusions'||rule.ruleId === 'git-exclusions') && rule.evidence && <blockquote className="mt-1 border-l-2 border-red-300 pl-2 italic text-red-700">
               “{rule.evidence.length > 220 ? `${rule.evidence.slice(0, 220)}…` : rule.evidence}”
               {rule.page && <span className="not-italic text-red-500"> — page {rule.page}</span>}
             </blockquote>}
@@ -68,6 +70,26 @@ export function VerificationResultView({ result, onReset, previews = [] }: {
       <p className="text-[10px] leading-4 text-slate-500">This automated result only means the document passed the configured checks. It does not confirm authenticity, insurer records, continuing policy status, or freedom from fraud.</p>
     </div>
   </div>
+
+  if (showData) return createPortal(<div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/60 p-4 sm:p-8" role="dialog" aria-modal="true" aria-label="Extracted document data">
+    <div className="mx-auto max-w-5xl rounded-2xl bg-white shadow-2xl">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+        <div><h2 className="text-xl font-bold text-slate-900">Document details</h2><p className="text-sm text-slate-500">Key information identified in each uploaded file.</p></div>
+        <button type="button" onClick={()=>setShowData(false)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><X size={16}/>Close</button>
+      </div>
+      <div className="space-y-5 p-5">
+        {result.documents?.map((document,index)=><section key={`${document.name}-${index}`} className="overflow-hidden rounded-xl border border-slate-200">
+          <div className="bg-slate-100 px-4 py-3"><h3 className="font-bold text-slate-900">{document.name}</h3></div>
+          {document.fields.length?<dl className="divide-y divide-slate-200">{document.fields.map(field=><div key={field.label} className="grid gap-1 px-4 py-3 sm:grid-cols-[14rem_1fr]"><dt className="text-sm font-semibold text-slate-600">{field.label}</dt><dd className="text-sm text-slate-900">{field.value}</dd></div>)}
+            {result.verificationType==='goods-in-transit'&&<>
+              {!document.fields.some(field=>field.label==='Goods in Transit limit')&&<div className="grid gap-1 px-4 py-3 sm:grid-cols-[14rem_1fr]"><dt className="text-sm font-semibold text-slate-600">Goods in Transit limit found</dt><dd className="font-semibold text-red-700">Not stated</dd></div>}
+              <div className="grid gap-1 px-4 py-3 sm:grid-cols-[14rem_1fr]"><dt className="text-sm font-semibold text-slate-600">Required GIT minimum</dt><dd className="font-semibold text-slate-900">£50,000</dd></div>
+            </>}
+          </dl>:<p className="px-4 py-6 text-sm text-slate-500">No recognised policy details were found.</p>}
+        </section>)}
+      </div>
+    </div>
+  </div>,document.body)
 
   if (!showDocument || !preview) return resultCard
 

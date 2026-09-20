@@ -30,6 +30,7 @@ export const Route = createFileRoute('/api/verify-document')({
         try {
           const form = await request.formData()
           const documents = form.getAll('documents')
+          const verificationType = form.get('verificationType')
 
           if (!documents.length || documents.some(document=>!(document instanceof File))) {
             return Response.json(
@@ -38,13 +39,17 @@ export const Route = createFileRoute('/api/verify-document')({
             )
           }
 
+          if (verificationType !== 'insurance' && verificationType !== 'goods-in-transit') {
+            return Response.json({ error: 'Please select a valid verification type.' }, { status: 400 })
+          }
+
           console.log('DOCUMENTS:', documents.map(document=>document instanceof File ? {
             name: document.name,
             type: document.type,
             size: document.size,
           } : null))
 
-          const result = await processDocuments(documents)
+          const result = await processDocuments(documents, verificationType)
 
           return Response.json(result, {
             headers: {

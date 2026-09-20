@@ -1,7 +1,7 @@
 import { FileText, ShieldCheck, Trash2, UploadCloud } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-import type { VerificationResult } from '~/types/verification'
+import type { VerificationResult, VerificationType } from '~/types/verification'
 import { VerificationResultView } from './verification-result'
 
 const MAX_UPLOAD_SIZE = 4 * 1024 * 1024
@@ -28,6 +28,7 @@ export function DocumentUpload() {
   const [result,setResult]=useState<VerificationResult>()
   const [error,setError]=useState('')
   const [previews,setPreviews]=useState<Preview[]>([])
+  const [verificationType,setVerificationType]=useState<VerificationType>('insurance')
 
   useEffect(()=>{
     const next=items.map(({file})=>({name:file.name,url:URL.createObjectURL(file)}))
@@ -58,7 +59,7 @@ export function DocumentUpload() {
     setBusy(true);setError('');setStage(items.some(({file})=>file.type==='application/pdf')?'Reading every PDF page':'Reading images with OCR')
     const controller=new AbortController();const timeout=window.setTimeout(()=>controller.abort(),75_000)
     try{
-      const body=new FormData();items.forEach(({file})=>body.append('documents',file))
+      const body=new FormData();body.append('verificationType',verificationType);items.forEach(({file})=>body.append('documents',file))
       const response=await fetch('/api/verify-document',{method:'POST',body,signal:controller.signal})
       setStage('Checking policy dates and cover')
       const data=await response.json().catch(()=>null)
@@ -72,14 +73,17 @@ export function DocumentUpload() {
 
   function remove(index:number){setError('');setItems(current=>current.filter((_,itemIndex)=>itemIndex!==index))}
   function reset(){setItems([]);setResult(undefined);setError('');if(input.current)input.current.value=''}
-  if(result)return <VerificationResultView result={result} onReset={reset} previews={previews}/>
+  const tabs=<div className="mb-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1" role="tablist" aria-label="Verification type">
+    {([['insurance','Recovery insurance'],['goods-in-transit','Goods in Transit']] as const).map(([value,label])=><button key={value} type="button" role="tab" aria-selected={verificationType===value} onClick={()=>{setVerificationType(value);reset()}} className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition ${verificationType===value?'bg-white text-blue-800 shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{label}</button>)}
+  </div>
+  if(result)return <>{tabs}<VerificationResultView result={result} onReset={reset} previews={previews}/></>
 
   const totalSize=items.reduce((sum,{file})=>sum+file.size,0)
   const totalPages=items.reduce((sum,item)=>sum+item.pages,0)
-  return <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_16px_60px_rgba(30,50,90,.08)] sm:p-9">
+  return <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_16px_60px_rgba(30,50,90,.08)] sm:p-9">{tabs}
     <div onDragOver={e=>{e.preventDefault();setDrag(true)}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);choose(e.dataTransfer.files)}} className={`rounded-2xl border-2 border-dashed p-9 text-center transition ${drag?'border-blue-500 bg-blue-50':'border-slate-300 bg-slate-50'}`}>
       <div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-blue-100 text-blue-700"><UploadCloud/></div>
-      <h2 className="text-lg font-semibold">Upload insurance documents</h2>
+      <h2 className="text-lg font-semibold">Upload {verificationType==='insurance'?'insurance':'Goods in Transit'} documents</h2>
       <p className="mt-2 text-sm text-slate-500">Drag and drop PDF, JPG or PNG files here</p>
       <input ref={input} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" className="hidden" onChange={e=>e.target.files&&choose(e.target.files)}/>
       <button type="button" disabled={counting} onClick={()=>input.current?.click()} className="mt-5 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold shadow-sm hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60">{counting?'Counting pages…':'Choose documents'}</button>
