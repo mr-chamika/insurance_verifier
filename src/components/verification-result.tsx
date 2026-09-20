@@ -19,8 +19,11 @@ export function VerificationResultView({ result, onReset, previewUrl }: {
     </div>
     <h2 className={`mt-2 text-center text-2xl font-bold ${ok ? 'text-emerald-700' : 'text-red-700'}`}>{result.status}</h2>
     <p className="mt-1 text-center text-sm text-slate-600">{result.summary}</p>
-    {previewUrl && !showDocument && <div className="mt-3 text-center">
-      <button type="button" onClick={() => setShowDocument(true)} className="inline-flex rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">View uploaded document</button>
+    {!showDocument && <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+      {previewUrl && <button type="button" onClick={() => setShowDocument(true)} className="inline-flex items-center justify-center rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50">View uploaded document</button>}
+      <button type="button" onClick={onReset} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-200 transition hover:bg-emerald-700 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
+        <RotateCcw size={15} />Check another document
+      </button>
     </div>}
     {!ok && <div className="mt-4 rounded-xl bg-red-50 px-4 py-3">
       <h3 className="text-sm font-semibold text-red-900">Why it was rejected</h3>
@@ -50,9 +53,6 @@ export function VerificationResultView({ result, onReset, previewUrl }: {
     <div className="mt-3 border-t border-slate-200 pt-3">
       <p className="text-[10px] leading-4 text-slate-500">This automated result only means the document passed the configured checks. It does not confirm authenticity, insurer records, continuing policy status, or freedom from fraud.</p>
     </div>
-    <button onClick={onReset} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50">
-      <RotateCcw size={15} />Check another document
-    </button>
   </div>
 
   if (!showDocument || !previewUrl) return resultCard
