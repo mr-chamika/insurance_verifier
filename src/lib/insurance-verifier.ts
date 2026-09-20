@@ -8,13 +8,14 @@ const has = (s: string, terms: readonly RegExp[]) => {
   return terms.some(r => r.test(searchable))
 }
 const result = (ruleId:string,label:string,passed:boolean,reason:string,evidence?:string,page?:number): RuleResult => ({ruleId,label,passed,reason,evidence,page})
+const SECTION_HEADING = String.raw`(?:effective (?:time and )?date|operative (?:date|from|until|to)|persons? entitled to drive|limitations? as to use|declaration|car transportation cover|covered vehicles|motor vehicle european cover|description of vehicles|name of (?:the )?policyholder|territorial limits|limit of indemnity|we hereby certify|notes?|advice to third parties|procedure in the event|warning|broker|date of issue)`
 const exclusionBlocks = (text:string,page:number) => {
   const normalised=normaliseText(text)
   const starts=[...normalised.matchAll(/\b(?:the policy does not cover|exclud\w*|does not cover|not covered|use for (?:the )?carriage of passengers? or goods? for hire or reward)\b/gi)]
   return starts.map((match) => {
     const start=match.index ?? 0
     const tail=normalised.slice(start)
-    const boundary=tail.search(/\s+(?=(?:\d{1,2}[.)]\s*)?(?:car transportation cover|covered vehicles|territorial limits|limit of indemnity|we hereby certify|notes?|advice to third parties|procedure in the event|warning|broker|date of issue)\b)/i)
+    const boundary=tail.search(new RegExp(String.raw`\s+(?=(?:\d{1,2}[.)]\s*)?${SECTION_HEADING}\b)`,'i'))
     const end=boundary>0 ? start+boundary : Math.min(normalised.length,start+1600)
     return {page,start,end,text:normalised.slice(start,end).replace(/\s+/g,' ').trim()}
   }).filter((item,index,items)=>!items.some((other,otherIndex)=>otherIndex<index && other.start<=item.start && other.end>=item.end))
@@ -30,12 +31,22 @@ export function verifyInsurance(pages: ExtractedPage[], now = new Date()): Verif
   const positiveCommercialUse = windows.some(w => has(w.text,C.commercialTerms) && !/\b(?:exclusion|exclusions|excluding|excluded|not covered|does not cover|not permitted|prohibited)\b/i.test(w.text))
   const commercialRecovery = Boolean(recovery && customerVehicles && (declaredRecoveryBusiness || positiveCommercialUse))
   const directExclusion = windows.find(w => has(w.text,C.exclusionPatterns))
-  const negativeClauses = pages.flatMap(({text,page}) => exclusionBlocks(text,page))
+  const exclusionClauses = pages.flatMap(({text,page}) => exclusionBlocks(text,page))
+  const negativeClauses = exclusionClauses
     .filter(item=>/\b(?:does not cover|not covered)\b/i.test(item.text))
   const passengerVehicleExclusion=negativeClauses.find(item=>/\bpassengers?\b/i.test(item.text)&&/\bvehicles?\b/i.test(item.text))
-  const exclusion=directExclusion??passengerVehicleExclusion
-  const statedExclusions = pages.flatMap(({text,page}) => exclusionBlocks(text,page))
-    .filter((item,index,items)=>item.text.length>0 && items.findIndex(other=>other.text===item.text)===index)
+  const hireRewardExclusion=exclusionClauses.find(item=>/\buse for hire (?:or|and) reward\b/i.test(item.text))
+    ?? pages.map(({text,page})=>({page,text:normaliseText(text).match(/\buse for hire (?:or|and) reward(?:\s+is)?\s+(?:excluded|not covered|not permitted)\b/i)?.[0]}))
+      .find((item): item is {page:number,text:string}=>Boolean(item.text))
+  const exclusion=directExclusion??passengerVehicleExclusion??((recovery||declaredRecoveryBusiness)?hireRewardExclusion:undefined)
+  const statedExclusions = exclusionClauses
+    .filter(item=>item.text.length>0)
+    // A forced OCR retry contains both the PDF text layer and OCR text. Keep
+    // only the first rendering of exclusion sections that begin alike.
+    .filter((item,index,items)=>{
+      const opening=item.text.replace(/[^a-z0-9 ]/gi,' ').replace(/\s+/g,' ').split(' ').slice(0,10).join(' ')
+      return items.findIndex(other=>other.page===item.page&&other.text.replace(/[^a-z0-9 ]/gi,' ').replace(/\s+/g,' ').split(' ').slice(0,10).join(' ')===opening)===index
+    })
   const personalOnly = has(all,C.personalUseTerms) && !has(all,C.tradeUseTerms)
   const dates = extractDates(all)
   const today = new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()))
@@ -48,7 +59,7 @@ export function verifyInsurance(pages: ExtractedPage[], now = new Date()): Verif
     result('start-date','Policy start date',!!dates.start?.date,'The policy start date could not be confirmed.',dates.start?.evidence),
     result('started','Policy has started',!dates.start?.date || dates.start.date<=today,'The policy has not started.',dates.start?.evidence),
     result('expiry-date','Policy expiry date',!!dates.end?.date,'The policy expiry date could not be confirmed.',dates.end?.evidence),
-    result('active','Policy is not expired',!dates.end?.date || dates.end.date>=today,'The policy has expired.',dates.end?.evidence),
+    result('active','Policy expiration',!dates.end?.date || dates.end.date>=today,'The policy has expired.',dates.end?.evidence),
     result('business-use','Motor-trade recovery business use',has(all,C.tradeUseTerms) && !personalOnly, personalOnly ? 'The policy only confirms social, domestic and pleasure use; commercial recovery use is not insured.' : 'Motor-trade or recovery-business use could not be confirmed.'),
     result('recovery-cover','Recovery or towing cover',!!recovery,'Recovery or towing cover could not be confirmed.',recovery?.text,recovery?.page),
     result('customer-vehicles','Customers’ vehicles covered',!!customerVehicles,'Cover for customers’ or third-party vehicles could not be confirmed.',customerVehicles?.text,customerVehicles?.page),

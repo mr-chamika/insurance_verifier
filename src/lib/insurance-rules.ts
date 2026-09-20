@@ -2,7 +2,7 @@
 export const RULE_CONFIG = {
   minimumTextLength: 120,
   minimumOcrConfidence: 65,
-  policyNumberLabels: [/\b(?:policy|certificate)\s*(?:number|no\.?|#)\s*[:-]?\s*[a-z0-9](?:[a-z0-9/ -]*[a-z0-9])\b/i],
+  policyNumberLabels: [/\b(?:policy|cer[a-z$5]{1,4}ficate)\s*(?:number|no\.?|#)\s*[:-]?\s*[a-z0-9](?:[a-z0-9/ -]*[a-z0-9])\b/i],
   insurerTerms: [/\b(?:underwritten|insured by|insurer|insurance company)\s*(?:by|:)\s*[a-z][a-z &.'-]{2,}/i, /\bissuing company\s+[a-z][a-z &.'-]{2,}/i, /\b[a-z][a-z &.'-]{1,60}\s+insurance company (?:limited|plc)\b/i, /\b[a-z][a-z &.'-]{1,60}\s+underwriting agency (?:limited|ltd)\b/i, /\b[a-z][a-z &.'-]{1,60}\s+insurance uk plc\b/i],
   comprehensiveTerms: [/\bfully comprehensive\b/i, /\bcomprehensive (?:motor )?cover\b/i],
   recoveryTerms: [/\bbreakdown\s+recovery\b/i, /\bvehicle\s+recovery(?:\s*\/\s*delivery)?\b/i, /\brecovery\s+operator\b/i, /\brecovery\s+of\s+broken[- ]down\b/i, /\brecovery\s+of\s+(?:broken[- ]down\s+and\s+)?accident[- ]damaged\s+vehicles?\b/i, /\bcar\s+transportation\s+cover\b/i, /\btransportation\s+of\s+motor\s+vehicles?\s+by\s+road\b/i, /\btow(?:ing)?\b/i, /\btransport(?:ation|ing)?\s+of\s+(?:customer|third[- ]party).*vehicles?\b/i],
