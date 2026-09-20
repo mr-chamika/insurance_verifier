@@ -20,4 +20,27 @@ export function findLabelledDate(text: string, labels: readonly string[]) {
     }
   }
 }
-export const extractDates = (text: string) => ({ start: findLabelledDate(text, C.startLabels), end: findLabelledDate(text, C.endLabels) })
+
+function documentDates(text: string) {
+  const repaired=text.replace(/\b(20\d)\s+(\d)\b/g,'$1$2').replace(/\b(20)\s+(\d{2})\b/g,'$1$2').replace(/\b(\d{1,2})\s*(?:st|nd|rd|th)\b/gi,'$1').replace(/\bj\s+une\b/gi,'june')
+  const pattern=new RegExp(DATE.source,'gi')
+  return [...repaired.matchAll(pattern)].map(match=>({date:parseDate(match),evidence:match[0]}))
+    .filter((item): item is {date:Date,evidence:string}=>Boolean(item.date))
+    .filter((item,index,items)=>items.findIndex(other=>other.date.valueOf()===item.date.valueOf())===index)
+}
+
+export function extractDates(text: string) {
+  let start=findLabelledDate(text,C.startLabels)
+  let end=findLabelledDate(text,C.endLabels)
+  const candidates=documentDates(text)
+
+  // Some PDFs expose table cells in column order: both labels are emitted
+  // separately from their two values. With exactly two policy dates there is
+  // no ambiguity, so restore their chronological meaning.
+  if(candidates.length===2 && (!start?.date || !end?.date || start.date>=end.date)) {
+    const [earlier,later]=candidates.sort((a,b)=>a.date.valueOf()-b.date.valueOf())
+    start={date:earlier.date,evidence:`policy commencement date ${earlier.evidence}`}
+    end={date:later.date,evidence:`policy expiry date ${later.evidence}`}
+  }
+  return {start,end}
+}

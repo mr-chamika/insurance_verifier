@@ -10,11 +10,11 @@ const has = (s: string, terms: readonly RegExp[]) => {
 const result = (ruleId:string,label:string,passed:boolean,reason:string,evidence?:string,page?:number): RuleResult => ({ruleId,label,passed,reason,evidence,page})
 const exclusionBlocks = (text:string,page:number) => {
   const normalised=normaliseText(text)
-  const starts=[...normalised.matchAll(/\b(?:exclud\w*|does not cover|not covered)\b/gi)]
+  const starts=[...normalised.matchAll(/\b(?:the policy does not cover|exclud\w*|does not cover|not covered|use for (?:the )?carriage of passengers? or goods? for hire or reward)\b/gi)]
   return starts.map((match) => {
     const start=match.index ?? 0
     const tail=normalised.slice(start)
-    const boundary=tail.search(/\n(?:\s*\n\s*)?(?=(?:\d{1,2}[.)]\s*)?(?:car transportation cover|covered vehicles|territorial limits|limit of indemnity|we hereby certify|notes?|advice to third parties|procedure in the event|warning|broker|date of issue)\b)/i)
+    const boundary=tail.search(/\s+(?=(?:\d{1,2}[.)]\s*)?(?:car transportation cover|covered vehicles|territorial limits|limit of indemnity|we hereby certify|notes?|advice to third parties|procedure in the event|warning|broker|date of issue)\b)/i)
     const end=boundary>0 ? start+boundary : Math.min(normalised.length,start+1600)
     return {page,start,end,text:normalised.slice(start,end).replace(/\s+/g,' ').trim()}
   }).filter((item,index,items)=>!items.some((other,otherIndex)=>otherIndex<index && other.start<=item.start && other.end>=item.end))
