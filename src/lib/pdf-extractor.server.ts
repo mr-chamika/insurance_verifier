@@ -4,7 +4,7 @@ import { MAX_PDF_PAGES } from './file-validation'
 import { ocrImages } from './image-ocr.server'
 import type { ExtractedPage } from '~/types/verification'
 
-export async function extractPdf(buffer: Buffer, forceOcr = false): Promise<ExtractedPage[]> {
+export async function extractPdf(buffer: Buffer, forceOcr = false, maxPages = MAX_PDF_PAGES): Promise<ExtractedPage[]> {
   const task=getDocument({
     data:new Uint8Array(buffer),
     useSystemFonts:true,
@@ -16,7 +16,7 @@ export async function extractPdf(buffer: Buffer, forceOcr = false): Promise<Extr
     console.error('PDF.js failed to open the uploaded PDF:', error)
     throw new Error('The PDF could not be opened. It may be corrupted, encrypted or password-protected.')
   }
-  if(pdf.numPages>MAX_PDF_PAGES) throw new Error(`PDFs may contain at most ${MAX_PDF_PAGES} pages.`)
+  if(pdf.numPages>maxPages) throw new Error(`The combined upload may contain at most ${MAX_PDF_PAGES} pages.`)
   const pages: ExtractedPage[]=[]; const scan: Array<{page:number;buffer:Buffer}>=[]
   for(let n=1;n<=pdf.numPages;n++){
     const page=await pdf.getPage(n); const content=await page.getTextContent(); const text=content.items.map(item=>'str' in item?item.str:'').join(' ')

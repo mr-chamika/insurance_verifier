@@ -13,12 +13,14 @@ function HighlightedExclusion({ text }: { text: string }) {
   )}</>
 }
 
-export function VerificationResultView({ result, onReset, previewUrl }: {
+export function VerificationResultView({ result, onReset, previews = [] }: {
   result: VerificationResult
   onReset: () => void
-  previewUrl?: string
+  previews?: Array<{name:string;url:string}>
 }) {
   const [showDocument, setShowDocument] = useState(false)
+  const [selectedDocument, setSelectedDocument] = useState(0)
+  const preview=previews[selectedDocument]
   const ok = result.status === 'APPROVED'
   const failed = result.rules.filter((rule) => !rule.passed)
   const statedExclusions = result.rules.filter((rule) => rule.ruleId.startsWith('exclusions-stated-') && rule.evidence)
@@ -32,7 +34,7 @@ export function VerificationResultView({ result, onReset, previewUrl }: {
     </div>
     <p className="mt-3 text-center text-base font-medium leading-6 text-slate-700">{result.summary}</p>
     {!showDocument && <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
-      {previewUrl && <button type="button" onClick={() => setShowDocument(true)} className="inline-flex items-center justify-center rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50">View uploaded document</button>}
+      {preview && <button type="button" onClick={() => setShowDocument(true)} className="inline-flex items-center justify-center rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50">View uploaded documents</button>}
       <button type="button" onClick={onReset} className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-200 transition hover:bg-emerald-700 hover:shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
         <RotateCcw size={15} />Check another document
       </button>
@@ -67,7 +69,7 @@ export function VerificationResultView({ result, onReset, previewUrl }: {
     </div>
   </div>
 
-  if (!showDocument || !previewUrl) return resultCard
+  if (!showDocument || !preview) return resultCard
 
   const splitView = <div className="document-comparison">
     <section className="comparison-result" aria-label="Verification result">
@@ -75,10 +77,12 @@ export function VerificationResultView({ result, onReset, previewUrl }: {
     </section>
     <section className="comparison-document" aria-label="Uploaded document">
       <div className="comparison-toolbar">
-        <span>Uploaded document</span>
+        <select value={selectedDocument} onChange={event=>setSelectedDocument(Number(event.target.value))} className="max-w-[70%] rounded bg-slate-800 px-2 py-1 text-sm text-white" aria-label="Select uploaded document">
+          {previews.map((item,index)=><option key={item.url} value={index}>{item.name}</option>)}
+        </select>
         <button type="button" onClick={() => setShowDocument(false)} className="comparison-close" aria-label="Close document view"><X size={16} />Close</button>
       </div>
-      <iframe src={`${previewUrl}#view=FitH&zoom=page-width`} title="Uploaded insurance document" className="comparison-frame" />
+      <iframe src={`${preview.url}#view=FitH&zoom=page-width`} title={`Uploaded document: ${preview.name}`} className="comparison-frame" />
     </section>
   </div>
 

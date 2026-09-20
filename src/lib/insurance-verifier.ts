@@ -35,8 +35,8 @@ export function verifyInsurance(pages: ExtractedPage[], now = new Date()): Verif
   const negativeClauses = exclusionClauses
     .filter(item=>/\b(?:does not cover|not covered)\b/i.test(item.text))
   const passengerVehicleExclusion=negativeClauses.find(item=>/\bpassengers?\b/i.test(item.text)&&/\bvehicles?\b/i.test(item.text))
-  const hireRewardExclusion=exclusionClauses.find(item=>/\buse for hire (?:or|and) reward\b/i.test(item.text))
-    ?? pages.map(({text,page})=>({page,text:normaliseText(text).match(/\buse for hire (?:or|and) reward(?:\s+is)?\s+(?:excluded|not covered|not permitted)\b/i)?.[0]}))
+  const hireRewardExclusion=exclusionClauses.find(item=>/\b(?:use|vehicles? used) for hire (?:or|and) reward\b/i.test(item.text))
+    ?? pages.map(({text,page})=>({page,text:normaliseText(text).match(/\b(?:use|vehicles? used) for hire (?:or|and) reward(?:\s+is)?\s+(?:excluded|not covered|not permitted)\b/i)?.[0]}))
       .find((item): item is {page:number,text:string}=>Boolean(item.text))
   const exclusion=directExclusion??passengerVehicleExclusion??((recovery||declaredRecoveryBusiness)?hireRewardExclusion:undefined)
   const statedExclusions = exclusionClauses

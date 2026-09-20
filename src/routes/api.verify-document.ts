@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { processDocument } from '~/lib/document-processor.server'
+import { processDocuments } from '~/lib/document-processor.server'
 
 const attempts = new Map<string, { count: number; reset: number }>()
 
@@ -29,22 +29,22 @@ export const Route = createFileRoute('/api/verify-document')({
 
         try {
           const form = await request.formData()
-          const document = form.get('document')
+          const documents = form.getAll('documents')
 
-          if (!(document instanceof File)) {
+          if (!documents.length || documents.some(document=>!(document instanceof File))) {
             return Response.json(
               { error: 'Please upload a valid document.' },
               { status: 400 }
             )
           }
 
-          console.log('DOCUMENT:', {
+          console.log('DOCUMENTS:', documents.map(document=>document instanceof File ? {
             name: document.name,
             type: document.type,
             size: document.size,
-          })
+          } : null))
 
-          const result = await processDocument(document)
+          const result = await processDocuments(documents)
 
           return Response.json(result, {
             headers: {
