@@ -8,8 +8,18 @@ import { nitro } from 'nitro/vite'
 export default defineConfig({
   plugins: [tsconfigPaths(), tailwindcss(), tanstackStart(), nitro({
     preset: 'vercel',
-    traceDeps: ['@napi-rs/canvas*', 'tesseract.js*'],
+    // PDF.js loads its worker dynamically and Tesseract starts a worker thread
+    // which in turn loads its WASM core. Dependency tracers cannot discover
+    // those files from the static import graph, so copy the complete packages.
+    traceDeps: ['@napi-rs/canvas*', 'pdfjs-dist*', 'tesseract.js*', 'tesseract.js-core*'],
     rollupConfig: { external: [/^@napi-rs\/canvas(?:\/|$)/, /^tesseract\.js(?:\/|$)/] },
+    // Keep OCR independent of outbound network access in the deployed function.
+    serverAssets: [{ baseName: 'ocr', dir: '.', pattern: 'eng.traineddata' }],
+    vercel: {
+      // TanStack Start is emitted as one catch-all function, so this must be
+      // applied to the base function rather than a per-route function rule.
+      functions: { maxDuration: 60 },
+    },
   }), react()],
   optimizeDeps: {
     exclude: [

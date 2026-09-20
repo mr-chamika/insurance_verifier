@@ -19,7 +19,7 @@ Uploads are validated by size and file signature. Digital PDFs use embedded text
 
 ## Vercel deployment
 
-The project uses the official TanStack Start Nitro adapter with the Vercel preset. Uploads are limited to 4 MB so multipart requests remain below Vercel Functions' 4.5 MB payload limit.
+The project uses the official TanStack Start Nitro adapter with the Vercel preset. Uploads are limited to 4 MB so multipart requests remain below Vercel Functions' 4.5 MB payload limit. PDF.js worker files, the Tesseract worker/WASM core, and the English OCR model are bundled into the function; deployed processing does not download OCR assets at runtime.
 
 1. Push the project to a GitHub repository.
 2. In Vercel, select **Add New → Project** and import that repository.

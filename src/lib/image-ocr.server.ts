@@ -1,5 +1,24 @@
 import { createCanvas, loadImage } from '@napi-rs/canvas'
 import { createWorker, PSM } from 'tesseract.js'
+import { useStorage } from 'nitro/storage'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+let languageDirectoryPromise: Promise<string> | undefined
+
+async function getEnglishLanguageDirectory() {
+  languageDirectoryPromise ??= useStorage('assets:ocr')
+    .getItemRaw<Uint8Array>('eng.traineddata')
+    .then(async (data) => {
+      if (!data) throw new Error('The bundled OCR language data is unavailable.')
+      const directory=join(tmpdir(),'doc-verify-ocr')
+      await mkdir(directory,{recursive:true})
+      await writeFile(join(directory,'eng.traineddata'),data)
+      return directory
+    })
+  return languageDirectoryPromise
+}
 
 async function prepareImage(buffer:Buffer) {
   const image=await loadImage(buffer)
@@ -39,7 +58,11 @@ async function prepareImage(buffer:Buffer) {
   return output.toBuffer('image/png')
 }
 export async function ocrImages(images: Array<{page:number;buffer:Buffer}>) {
-  const worker=await createWorker('eng')
+  // Tesseract 6's in-memory language-object path incorrectly uses the bytes as
+  // the language name. Materialise our bundled model in the writable temp
+  // directory and use its supported local-file loader instead.
+  const languageDirectory=await getEnglishLanguageDirectory()
+  const worker=await createWorker('eng',undefined,{langPath:languageDirectory,gzip:false,cacheMethod:'none'})
   await worker.setParameters({preserve_interword_spaces:'1',tessedit_pageseg_mode:PSM.AUTO})
   try { const pages=[]; for(const image of images){
     let input=image.buffer
